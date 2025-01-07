@@ -4,24 +4,24 @@ using System.Data.Common;
 using DatabaseSchemaReader.DataSchema;
 using DatabaseSchemaReader.ProviderSchemaReaders.ConnectionContext;
 
-namespace DatabaseSchemaReader.ProviderSchemaReaders.Databases.PostgreSql
+namespace DatabaseSchemaReader.ProviderSchemaReaders.Databases.Dm
 {
-    internal class Tables : SqlExecuter<DatabaseTable>
+    internal class Tables : DmSqlExecuter<DatabaseTable>
     {
         private readonly string _tableName;
 
         public Tables(int? commandTimeout, string owner, string tableName) : base(commandTimeout, owner)
         {
             _tableName = tableName;
-            Owner = owner;
-            Sql = @"SELECT distinct
-table_schema, 
-table_name 
-FROM information_schema.tables 
-WHERE (table_schema = :OWNER OR :OWNER IS NULL)
-AND (table_name = :TABLENAME OR :TABLENAME IS NULL)
-AND TABLE_TYPE = 'BASE TABLE'
-ORDER BY table_schema, table_name";
+            Sql = @"SELECT
+  OWNER,
+  TABLE_NAME
+FROM ALL_TABLES
+WHERE 
+    (OWNER=:OWNER or :OWNER IS NULL) AND 
+    (TABLE_NAME = :TABLENAME or :TABLENAME IS NULL) AND
+    OWNER NOT IN ('SYS', 'SYSMAN', 'CTXSYS', 'MDSYS', 'OLAPSYS', 'ORDSYS', 'OUTLN', 'WKSYS', 'WMSYS', 'XDB', 'ORDPLUGINS', 'SYSTEM')
+ORDER BY OWNER, TABLE_NAME";
         }
 
         public IList<DatabaseTable> Execute(IConnectionAdapter connectionAdapter)
@@ -34,14 +34,15 @@ ORDER BY table_schema, table_name";
 
         protected override void AddParameters(DbCommand command)
         {
+            base.AddParameters(command);
             AddDbParameter(command, "OWNER", Owner);
             AddDbParameter(command, "TABLENAME", _tableName);
         }
 
         protected override void Mapper(IDataRecord record)
         {
-            var schema = record["table_schema"].ToString();
-            var name = record["table_name"].ToString();
+            var schema = record["OWNER"].ToString();
+            var name = record["TABLE_NAME"].ToString();
             var table = new DatabaseTable
                         {
                             Name = name,

@@ -27,6 +27,10 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Adapters
                 case SqlType.SqlServerCe:
                     schemaReader = new SqlServerCeAdapter(schemaParameters);
                     break;
+                // lann
+                case SqlType.Dm:
+                    schemaReader = new DmAdapter(schemaParameters);
+                    break;
 
                 default:
                     //var providerName = schemaParameters.ProviderName;

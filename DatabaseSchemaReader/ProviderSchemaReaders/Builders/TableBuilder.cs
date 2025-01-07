@@ -96,6 +96,11 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Builders
             UpdateTableDescriptions(table, tableDescs);
             UpdateColumnDescriptions(table, colDescs);
             _readerAdapter.PostProcessing(table);
+			// lann
+            if (string.IsNullOrWhiteSpace(table.Description))
+            {
+                table.Description = tables.FirstOrDefault()?.Description;
+            }
             return table;
         }
 

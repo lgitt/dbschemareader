@@ -14,7 +14,7 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Databases.PostgreSql
         {
             _viewName = viewName;
             Owner = owner;
-            Sql = @"SELECT
+            Sql = @"SELECT distinct
   table_schema,
   table_name,
   is_updatable,

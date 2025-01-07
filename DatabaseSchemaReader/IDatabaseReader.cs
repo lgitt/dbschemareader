@@ -7,7 +7,7 @@ namespace DatabaseSchemaReader
     /// <summary>
     /// Read database schema into schema objects
     /// </summary>
-    public interface IDatabaseReader : IDisposable
+    public partial interface IDatabaseReader : IDisposable
     {
         /// <summary>
         /// Gets or sets the owner user. Always set it with Oracle (otherwise you'll get SYS, MDSYS etc...)

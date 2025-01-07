@@ -1,0 +1,16 @@
+﻿1.TableBuilder
+              if (table.Description.IsNullOrEmpty())
+            {
+                table.Description = tables.FirstOrDefault()?.Description;
+            }
+
+2.SqlType.cs
+
+        Db2,
+        /// <summary>
+        /// 达梦
+        /// </summary>
+        Dm
+3.ProviderToSqlType
+  2处
+4.
