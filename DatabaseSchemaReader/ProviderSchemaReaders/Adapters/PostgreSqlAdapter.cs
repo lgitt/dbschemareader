@@ -219,5 +219,11 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Adapters
                 //change the type to serial (or bigserial), ensure it's the primary key
             }
         }
+
+        public override IList<DatabaseColumn> IdentityColumns(string tableName)
+        {
+            return new IdentityColumns(CommandTimeout, Owner, tableName)
+                .Execute(ConnectionAdapter);
+        }
     }
 }
