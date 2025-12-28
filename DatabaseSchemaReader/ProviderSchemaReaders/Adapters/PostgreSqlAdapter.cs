@@ -1,5 +1,6 @@
 ﻿using DatabaseSchemaReader.DataSchema;
 using DatabaseSchemaReader.ProviderSchemaReaders.Databases.PostgreSql;
+using DatabaseSchemaReader.ProviderSchemaReaders.ResultModels;
 using DatabaseSchemaReader.SqlGen.PostgreSql;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Adapters
     class PostgreSqlAdapter : ReaderAdapter
     {
         private int _serverVersion;
+        private bool? _isCoachroach;
 
         public PostgreSqlAdapter(SchemaParameters schemaParameters) : base(schemaParameters)
         {
@@ -68,8 +70,17 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Adapters
             {
                 _serverVersion = new ServerVersion(CommandTimeout).Execute(ConnectionAdapter);
             }
+            if (!_isCoachroach.HasValue)
+            {
+                _isCoachroach = new ServerVersion(CommandTimeout).IsCockroachDb(ConnectionAdapter);
+            }
 
-            var triggers = new Triggers(CommandTimeout, Owner, tableName) {ServerVersion = _serverVersion};
+
+            var triggers = new Triggers(CommandTimeout, Owner, tableName)
+            {
+                ServerVersion = _serverVersion,
+                IsCoachroachDb = _isCoachroach
+            };
             return triggers.Execute(ConnectionAdapter);
         }
 
@@ -102,7 +113,7 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Adapters
                     _serverVersion = new ServerVersion(CommandTimeout).Execute(ConnectionAdapter);
                 }
 
-                var materializedViews = new MaterializedViews(CommandTimeout, Owner, viewName) {ServerVersion = _serverVersion};
+                var materializedViews = new MaterializedViews(CommandTimeout, Owner, viewName) { ServerVersion = _serverVersion };
                 var mviews = materializedViews
                     .Execute(ConnectionAdapter);
                 foreach (var mview in mviews)
@@ -116,6 +127,18 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Adapters
         public override IList<DatabaseFunction> Functions(string name)
         {
             return new Functions(CommandTimeout, Owner)
+                .Execute(ConnectionAdapter);
+        }
+
+        public override IList<DatabaseStoredProcedure> StoredProcedures(string name)
+        {
+            return new StoredProcedures(CommandTimeout, Owner)
+                .Execute(ConnectionAdapter);
+        }
+
+        public override IList<ProcedureSource> ProcedureSources(string name)
+        {
+            return new ProcedureSources(CommandTimeout, Owner, null)
                 .Execute(ConnectionAdapter);
         }
 
@@ -195,12 +218,6 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Adapters
                 //if defaultValue looks like the nextval from a sequence, it's a pk
                 //change the type to serial (or bigserial), ensure it's the primary key
             }
-        }
-
-        public override IList<DatabaseColumn> IdentityColumns(string tableName)
-        {
-            return new IdentityColumns(CommandTimeout, Owner, tableName)
-                .Execute(ConnectionAdapter);
         }
     }
 }

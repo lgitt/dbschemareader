@@ -1,9 +1,8 @@
-﻿using System;
+﻿using DatabaseSchemaReader.DataSchema;
+using DatabaseSchemaReader.ProviderSchemaReaders.ConnectionContext;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using DatabaseSchemaReader.DataSchema;
-using DatabaseSchemaReader.ProviderSchemaReaders.ConnectionContext;
 
 namespace DatabaseSchemaReader.ProviderSchemaReaders.Databases.PostgreSql
 {
@@ -37,6 +36,7 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Databases.PostgreSql
             Result.Add(trigger);
         }
         public int ServerVersion { get; set; }
+        public bool? IsCoachroachDb { get; set; }
 
         public IList<DatabaseTrigger> Execute(IConnectionAdapter connectionAdapter)
         {
@@ -45,18 +45,42 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Databases.PostgreSql
             {
                 timing = "ACTION_TIMING";
             }
-
-            Sql = @"SELECT 
-  TRIGGER_SCHEMA AS OWNER,
-  TRIGGER_NAME,
-  EVENT_OBJECT_TABLE AS TABLE_NAME,
-  ACTION_STATEMENT AS TRIGGER_BODY,
-  EVENT_MANIPULATION AS TRIGGERING_EVENT,
-  " + timing + @" AS TRIGGER_TYPE
+            if (IsCoachroachDb == true || ServerVersion < 90100)
+            {
+                // CockroachDB does not support pg_get_triggerdef
+                Sql = $@"SELECT 
+    TRIGGER_SCHEMA AS OWNER,
+    TRIGGER_NAME,
+    EVENT_OBJECT_TABLE AS TABLE_NAME,
+    ACTION_STATEMENT AS TRIGGER_BODY,
+    EVENT_MANIPULATION AS TRIGGERING_EVENT,
+    {timing} AS TRIGGER_TYPE
 FROM information_schema.Triggers
 WHERE 
 (EVENT_OBJECT_TABLE = :tableName OR :tableName IS NULL) AND 
 (TRIGGER_SCHEMA = :schemaOwner OR :schemaOwner IS NULL)";
+            }
+            else
+            {
+
+                Sql = $@"SELECT 
+  it.trigger_schema AS OWNER,
+  it.trigger_name AS TRIGGER_NAME,
+  it.event_object_table AS TABLE_NAME,
+  pg_get_triggerdef(t.oid) AS TRIGGER_BODY,
+  it.event_manipulation AS TRIGGERING_EVENT,
+  it.{timing} AS TRIGGER_TYPE
+FROM pg_trigger t
+JOIN pg_class c ON t.tgrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+JOIN information_schema.triggers it 
+  ON it.trigger_name = t.tgname 
+  AND it.event_object_table = c.relname
+  AND it.trigger_schema = n.nspname
+WHERE NOT t.tgisinternal
+AND (it.EVENT_OBJECT_TABLE = :tableName OR :tableName IS NULL) AND 
+(it.TRIGGER_SCHEMA = :schemaOwner OR :schemaOwner IS NULL)";
+            }
 
             ExecuteDbReader(connectionAdapter);
             return Result;

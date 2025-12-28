@@ -8,9 +8,32 @@ namespace DatabaseSchemaReader.ProviderSchemaReaders.Databases
     {
         public static string GetString(this IDataRecord record, string fieldName)
         {
+            // lann
+            // 优化避免fieldName不存在时抛异常
+            if (!TryGetOrdinal(record, fieldName, out var ordinal)) return null;
             var value = record[fieldName];
-            if (value == DBNull.Value) return null;
+            // lann
+            if (value == null || value == DBNull.Value) return null;
             return value.ToString();
+        }
+
+        // lann
+        private static bool TryGetOrdinal(IDataRecord record, string fieldName, out int ordinal)
+        {
+            ordinal = -1;
+            if (record == null) return false;
+            if (string.IsNullOrEmpty(fieldName)) return false;
+
+            // IDataRecord.GetOrdinal 在不存在列名时会抛 IndexOutOfRangeException
+            try
+            {
+                ordinal = record.GetOrdinal(fieldName);
+                return ordinal >= 0;
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return false;
+            }
         }
 
         public static int? GetNullableInt(this IDataRecord record, string fieldName)

@@ -282,18 +282,21 @@ namespace DatabaseSchemaReader.SqlGen
             if (sql.TrimStart().StartsWith("CREATE VIEW ", StringComparison.OrdinalIgnoreCase))
             {
                 //helpfully, SqlServer includes the create statement
-                return sql + _sqlFormatProvider.RunStatements();
+                if (DdlFactory.UseGranularBatching) sql += _sqlFormatProvider.RunStatements();
+                return sql;
             }
 
             //Oracle and MySql have CREATE OR REPLACE
-            var addView = "CREATE VIEW " + SchemaPrefix(view.SchemaOwner) + Escape(view.Name) + " AS " + sql;
-            return addView + _sqlFormatProvider.RunStatements();
+            var addView = $"CREATE VIEW {SchemaPrefix(view.SchemaOwner)}{Escape(view.Name)} AS {sql}";
+            if (DdlFactory.UseGranularBatching) addView += _sqlFormatProvider.RunStatements();
+            return addView;
         }
 
         public string DropView(DatabaseView view)
         {
-            return "DROP VIEW " + SchemaPrefix(view.SchemaOwner) + Escape(view.Name) + ";"
-                + _sqlFormatProvider.RunStatements();
+            var dropView = $"DROP VIEW {SchemaPrefix(view.SchemaOwner)}{Escape(view.Name)};";
+            if (DdlFactory.UseGranularBatching) dropView += _sqlFormatProvider.RunStatements();
+            return dropView;
         }
 
         public virtual string AddProcedure(DatabaseStoredProcedure procedure)
@@ -405,7 +408,9 @@ namespace DatabaseSchemaReader.SqlGen
             return string.Format(CultureInfo.InvariantCulture,
                 DropTriggerFormat,
                 SchemaPrefix(trigger.SchemaOwner),
-                Escape(trigger.Name));
+                Escape(trigger.Name),
+                //in PostgreSql, triggers are on tables- but in sql standard they are in schema
+                Escape(trigger.TableName));
         }
 
         public string RunStatements()

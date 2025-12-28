@@ -1,6 +1,7 @@
 ﻿using DatabaseSchemaReader.DataSchema;
 using DatabaseSchemaReader.ProviderSchemaReaders.ConnectionContext;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -30,7 +31,8 @@ tp.typname AS RETURNTYPE,
 pr.proargtypes as INARGS,
 pr.proallargtypes as ALLARGS,
 pr.proargmodes as ARGMODES,
-pr.proargnames as ARGNAMES
+pr.proargnames as ARGNAMES,
+pr.oid AS OID
   FROM pg_proc pr
 LEFT OUTER JOIN pg_type tp ON tp.oid = pr.prorettype
 INNER JOIN pg_namespace ns ON pr.pronamespace = ns.oid
@@ -94,6 +96,8 @@ INNER JOIN pg_namespace ns ON pr.pronamespace = ns.oid
             //there are no arguments for this procedure
             if (allArgs.Length == 0) return;
 
+            var oid = (uint)record["oid"];
+
             var schema = ReadString(record["SCHEMA"]);
             var procedure = ReadString(record["NAME"]);
             var modes = ReadArray(record["ARGMODES"]);
@@ -109,8 +113,8 @@ INNER JOIN pg_namespace ns ON pr.pronamespace = ns.oid
                 //That may be difficult for clients so we'll invent a name
                 if (string.IsNullOrEmpty(argName)) argName = "arg" + index;
 
-                string direction;
-                if (index >= modes.Length) direction = "IN";
+                DatabaseArgumentMode direction;
+                if (index >= modes.Length) direction = DatabaseArgumentMode.In;
                 else direction = ParseDirection(modes[index]);
 
                 var arg = new DatabaseArgument
@@ -119,10 +123,10 @@ INNER JOIN pg_namespace ns ON pr.pronamespace = ns.oid
                     ProcedureName = procedure,
                     Name = argName,
                     Ordinal = index,
+                    ArgumentMode = direction,
+                    Oid = oid
                 };
-                if (direction.Contains("IN")) arg.In = true;
-                //can be INOUT
-                if (direction.Contains("OUT")) arg.Out = true;
+
                 var typeOid = allArgs[index];
                 if (!_requiredDataTypes.ContainsKey(typeOid))
                 {
@@ -134,16 +138,18 @@ INNER JOIN pg_namespace ns ON pr.pronamespace = ns.oid
             }
         }
 
-        private static string ParseDirection(string s)
+        private static DatabaseArgumentMode ParseDirection(string s)
         {
             switch (s)
             {
                 case "b":
-                    return "INOUT";
+                    return DatabaseArgumentMode.InOut;
                 case "o":
-                    return "OUT";
+                    return DatabaseArgumentMode.Out;
+                case "t":
+                    return DatabaseArgumentMode.Table;
                 default:
-                    return "IN";
+                    return DatabaseArgumentMode.In;
             }
         }
 
@@ -161,8 +167,18 @@ INNER JOIN pg_namespace ns ON pr.pronamespace = ns.oid
 
         private static long[] ReadLongArray(object o)
         {
-            var ar = o as long[];
-            if (ar != null) return ar;
+            var ar = o as uint[];
+            if (ar != null)
+            {
+                //or Array.ConvertAll() if netstandard 2...
+                var longArray = new long[ar.Length];
+                for (var i = 0; i < ar.Length; i++)
+                {
+                    longArray[i] = (long)ar[i];
+                }
+                return longArray;
+            }
+            ;
             if (o is long) return new[] { (long)o };
             return new long[] { };
         }
@@ -191,6 +207,9 @@ INNER JOIN pg_namespace ns ON pr.pronamespace = ns.oid
         {
             var ar = o as string[];
             if (ar != null) return ar;
+            var cha = o as char[];
+            //modes can be a char array, so convert to strings
+            if (cha != null) return cha.Select(c => c.ToString()).ToArray();
             var s = ReadString(o);
             if (s == null) return new string[] { };
             s = s.Trim(new[] { '{', '}' });
