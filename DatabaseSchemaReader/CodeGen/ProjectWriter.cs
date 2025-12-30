@@ -71,14 +71,16 @@ namespace DatabaseSchemaReader.CodeGen
             var reference = FindSystemDataReference();
             reference.AddAfterSelf(
                 new XElement(_xmlns + "Reference",
-                            new XAttribute("Include", "Oracle.ManagedDataAccess, Version=4.121.2.0, Culture=neutral, PublicKeyToken=89b483f429c47342, processorArchitecture=MSIL")),
+                            new XAttribute("Include", "Oracle.ManagedDataAccess")),
                 new XElement(_xmlns + "Private", "True"),
-                new XElement(_xmlns + "HintPath", @"..\packages\Oracle.ManagedDataAccess.12.1.24160719\lib\net40\Oracle.ManagedDataAccess.dll"));
-            reference.AddAfterSelf(
+
                 new XElement(_xmlns + "Reference",
-                            new XAttribute("Include", "Oracle.ManagedDataAccess.EntityFramework, Version=6.121.2.0, Culture=neutral, PublicKeyToken=89b483f429c47342, processorArchitecture=MSIL")),
+                            new XAttribute("Include", "Oracle.ManagedDataAccess.EntityFramework")),
                 new XElement(_xmlns + "Private", "True"),
-                new XElement(_xmlns + "HintPath", @"..\Oracle.ManagedDataAccess.EntityFramework.12.1.2400\lib\net45\Oracle.ManagedDataAccess.EntityFramework.dll"));
+
+                new XElement(_xmlns + "Reference",
+                            new XAttribute("Include", "Oracle.ManagedDataAccess.Types")),
+                new XElement(_xmlns + "Private", "True"));
             _hasOracle = true;
         }
 

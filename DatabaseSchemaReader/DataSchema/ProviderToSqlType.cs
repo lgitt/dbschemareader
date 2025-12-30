@@ -59,7 +59,7 @@ namespace DatabaseSchemaReader.DataSchema
                 case SqlType.SqlServer:
                     return "System.Data.SqlClient";
                 case SqlType.Oracle:
-                    return "System.Data.OracleClient";
+                    return "Oracle.ManagedDataAccess.Client";
                 case SqlType.MySql:
                     return "MySql.Data.MySqlClient";
                 case SqlType.SQLite:

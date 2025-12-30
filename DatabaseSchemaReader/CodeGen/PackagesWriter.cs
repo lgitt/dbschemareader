@@ -45,8 +45,7 @@
         {
             var targetFramework = _projectVersion == ProjectVersion.Vs2010 ? "net40" : "net461";
             _providerReference = @"
-  <package id=""Oracle.ManagedDataAccess"" version=""12.1.24160719"" targetFramework=""" + targetFramework + @""" />
-  <package id=""Oracle.ManagedDataAccess.EntityFramework"" version=""12.1.2400"" targetFramework=""" + targetFramework + @""" />";
+  <package id=""Oracle.ManagedDataAccess"" version=""19.22.0"" targetFramework=""" + targetFramework + @""" />";
         }
     }
 }
